@@ -4,6 +4,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
+import productRoutes from "./routes/products.routes";
 
 const PORT = parseInt(process.env.PORT ?? "3000");
 
@@ -20,6 +21,8 @@ fastify.register(helmet, {
   contentSecurityPolicy: false,
 });
 
+fastify.register(productRoutes, { prefix: "/products" });
+
 // Declare a route
 fastify.get("/", async (request, reply) => {
   return {
@@ -30,12 +33,11 @@ fastify.get("/", async (request, reply) => {
 });
 
 fastify.get("/health", async (request, reply) => {
-    return{
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-
-    }
-})
+  return {
+    status: "ok",
+    timestamp: new Date().toISOString(),
+  };
+});
 
 // Run the server!
 fastify.listen({ port: PORT }, function (err, address) {
@@ -45,6 +47,5 @@ fastify.listen({ port: PORT }, function (err, address) {
   }
   // Server is now listening on ${address}
 });
-
 
 export default fastify;
