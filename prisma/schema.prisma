@@ -17,11 +17,7 @@ model User {
   birthDate DateTime?
   createdAt DateTime? @default(now())
   role      Role      @default(USER)
-}
-
-enum Role {
-  USER
-  ADMIN
+  phone     String?
 }
 
 model Product {
@@ -33,4 +29,9 @@ model Product {
   image       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
 }
