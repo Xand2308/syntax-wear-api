@@ -1,61 +1,95 @@
 import { prisma } from "../utils/prisma";
 import { ProductFilters } from "../types";
-import { Prisma } from "../../generated/prisma/client";
 
-export const getProducts = async (filters: ProductFilters = {}) => {
-  const {
-    page,
-    limit,
-    minPrice,
-    maxPrice,
-    search,
-    sortBy = "createdAt",
-    sortOrder = "desc",
-  } = filters;
+export const getProducts = async (filter: ProductFilters) => {
+	const { minPrice, maxPrice, search, sortBy, sortOrder, page = 1, limit = 10 } = filter;
 
-  const where: Prisma.ProductWhereInput = {};
+	const where: any = {};
 
-  // 1. Filtro de busca textual (nome ou descrição)
-  if (search && search.trim() !== "") {
-    where.OR = [
-      { name: { contains: search.trim(), mode: "insensitive" } },
-      { description: { contains: search.trim(), mode: "insensitive" } },
-    ];
-  }
+	// Filtro por preço
+	if (minPrice !== undefined || maxPrice !== undefined) {
+		where.price = {};
 
-  // 2. Filtro de faixa de preço (minPrice e maxPrice)
-  const min = minPrice !== undefined && minPrice !== null ? Number(minPrice) : undefined;
-  const max = maxPrice !== undefined && maxPrice !== null ? Number(maxPrice) : undefined;
+		if (minPrice !== undefined) {
+			where.price.gte = Number(minPrice);
+		}
 
-  if ((min !== undefined && !isNaN(min)) || (max !== undefined && !isNaN(max))) {
-    where.price = {};
-    if (min !== undefined && !isNaN(min)) {
-      where.price.gte = min;
-    }
-    if (max !== undefined && !isNaN(max)) {
-      where.price.lte = max;
-    }
-  }
+		if (maxPrice !== undefined) {
+			where.price.lte = Number(maxPrice);
+		}
+	}
 
-  // 3. Paginação (page e limit)
-  const pageNum = page !== undefined && page !== null ? Math.max(1, Number(page)) : undefined;
-  const limitNum = limit !== undefined && limit !== null ? Math.max(1, Number(limit)) : undefined;
-  const skip = pageNum && limitNum ? (pageNum - 1) * limitNum : undefined;
+	// Filtro por busca (name e description)
+	if (search && search.trim()) {
+		where.OR = [
+			{
+				name: {
+					contains: search,
+					mode: "insensitive",
+				},
+			},
+			{
+				description: {
+					contains: search,
+					mode: "insensitive",
+				},
+			},
+		];
+	}
 
-  // 4. Ordenação (sortBy e sortOrder)
-  const orderField = sortBy === "price" || sortBy === "name" || sortBy === "createdAt" ? sortBy : "createdAt";
-  const orderDirection = sortOrder?.toLowerCase() === "asc" ? "asc" : "desc";
+	// Paginação
+	const skip = (Number(page) - 1) * Number(limit);
+	const take = Number(limit);
 
-  const products = await prisma.product.findMany({
-    where: Object.keys(where).length > 0 ? where : undefined,
-    take: limitNum,
-    skip,
-    orderBy: {
-      [orderField]: orderDirection,
-    },
-  });
+	// Ordenação
+	const orderBy: any = {};
 
-  return products;
+	if (sortBy) {
+		orderBy[sortBy] = sortOrder || "asc";
+	}
+
+	try {
+		// Buscar produtos com filtros
+		const [products, total] = await Promise.all([
+			prisma.product.findMany({
+				where,
+				orderBy: Object.keys(orderBy).length > 0 ? orderBy : undefined,
+				skip,
+				take,
+			}),
+
+			prisma.product.count({ where }),
+		]);
+
+		return {
+			data: products,
+			total,
+			page,
+			limit,
+			totalPages: Math.ceil(total / limit),
+		};
+	} catch (error) {
+		console.error("Erro ao buscar produtos:", error);
+		throw error;
+	}
 };
 
+export const getProductById = async (id: number) => {
+	const product = await prisma.product.findUnique({
+		where: { id },
+	});
 
+	if (!product) {
+		throw new Error("Produto não encontrado");
+	}
+
+	return product;
+};
+
+export const createProduct = async (data: any) => {
+	const newProduct = await prisma.product.create({
+		data,
+	});
+
+	return newProduct;
+};

@@ -19,6 +19,19 @@ export interface RegisterRequest extends AuthRequest {
   lastName: string;
   cpf?: string;
   dateOfBirth?: string;
+  birthDate?: string;
   phone?: string;
   role?: "USER" | "ADMIN";
+}
+
+export interface UserResponse {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  cpf?: string | null;
+  birthDate?: Date | null;
+  phone?: string | null;
+  role: "USER" | "ADMIN";
+  createdAt?: Date | null;
 }

@@ -3,12 +3,10 @@ import { loginUser, registerUser } from "../services/auth.service";
 import { AuthRequest, RegisterRequest } from "../types";
 
 export const register = async (
-  request: FastifyRequest,
+  request: FastifyRequest<{ Body: RegisterRequest }>,
   reply: FastifyReply,
 ) => {
-  //Lógica de registro de usupário
-
-  const user = await registerUser(request.body as RegisterRequest);
+  const user = await registerUser(request.body);
 
   const token = request.server.jwt.sign({ userId: user.id });
 

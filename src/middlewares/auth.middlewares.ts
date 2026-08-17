@@ -7,6 +7,6 @@ export const authenticate = async (
   try {
     await request.jwtVerify();
   } catch (err) {
-    reply.status(401).send({ message: "Token inválido ou expridado" });
+    return reply.status(401).send({ message: "Token inválido ou expirado" });
   }
 };
