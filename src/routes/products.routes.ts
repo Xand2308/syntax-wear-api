@@ -1,22 +1,49 @@
 import { FastifyInstance } from "fastify";
-import { listProducts } from "../controllers/products.controller";
+import {
+  listProducts,
+  getProduct,
+  createNewProduct,
+} from "../controllers/products.controller";
+import { boolean } from "zod";
 
 export default async function productRoutes(fastify: FastifyInstance) {
+  // Listar produtos
   fastify.get(
     "/",
     {
       schema: {
         tags: ["Products"],
         summary: "Listar produtos",
-        description: "Lista de produtos com filtros opcionais (busca, preço, ordenação e paginação)",
+        description:
+          "Lista de produtos com filtros opcionais, ordenação e paginação",
+
         querystring: {
           type: "object",
           properties: {
-            page: { type: "integer", minimum: 1, description: "Número da página" },
-            limit: { type: "integer", minimum: 1, description: "Quantidade de itens por página" },
-            minPrice: { type: "number", minimum: 0, description: "Preço mínimo" },
-            maxPrice: { type: "number", minimum: 0, description: "Preço máximo" },
-            search: { type: "string", description: "Termo de busca (nome ou descrição)" },
+            page: {
+              type: "integer",
+              minimum: 1,
+              description: "Número da página",
+            },
+            limit: {
+              type: "integer",
+              minimum: 1,
+              description: "Quantidade de itens por página",
+            },
+            minPrice: {
+              type: "number",
+              minimum: 0,
+              description: "Preço mínimo",
+            },
+            maxPrice: {
+              type: "number",
+              minimum: 0,
+              description: "Preço máximo",
+            },
+            search: {
+              type: "string",
+              description: "Termo de busca",
+            },
             sortBy: {
               type: "string",
               enum: ["price", "name", "createdAt"],
@@ -29,27 +56,186 @@ export default async function productRoutes(fastify: FastifyInstance) {
             },
           },
         },
+      },
+    },
+    listProducts,
+  );
+
+  // Buscar produto por ID
+  fastify.get(
+    "/:id",
+    {
+      schema: {
+        tags: ["Products"],
+        summary: "Buscar produto por ID",
+        description: "Retorna um produto específico pelo seu ID",
+
+        params: {
+          type: "object",
+          required: ["id"],
+          properties: {
+            id: {
+              type: "integer",
+              minimum: 1,
+              description: "ID do produto",
+            },
+          },
+        },
+
         response: {
           200: {
-            description: "Lista de produtos retornada com sucesso",
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                id: { type: "integer" },
-                name: { type: "string" },
-                description: { type: ["string", "null"] },
-                price: { type: "number" },
-                stock: { type: "integer" },
-                image: { type: ["string", "null"] },
-                createdAt: { type: "string" },
-                updatedAt: { type: "string" },
+            description: "Produto encontrado",
+            type: "object",
+
+            properties: {
+              id: {
+                type: "integer",
+                description: "ID do produto",
+              },
+
+              name: {
+                type: "string",
+                description: "Nome do produto",
+              },
+
+              slug: {
+                type: "string",
+                description: "Slug único do produto",
+              },
+
+              description: {
+                type: ["string", "null"],
+                description: "Descrição do produto",
+              },
+
+              price: {
+                type: "number",
+                description: "Preço do produto",
+              },
+
+              colors: {
+                type: "array",
+                items: {
+                  type: "string",
+                },
+                description: "Cores disponíveis do produto",
+              },
+
+              stock: {
+                type: "integer",
+                description: "Quantidade disponível em estoque",
+              },
+
+              sizes: {
+                type: "array",
+                items: {
+                  type: "string",
+                },
+                description: "Tamanhos disponíveis do produto",
+              },
+
+              image: {
+                type: ["string", "null"],
+                description: "Imagem principal do produto",
+              },
+
+              createdAt: {
+                type: "string",
+                format: "date-time",
+                description: "Data de criação",
+              },
+
+              active: {
+                type: "boolean",
+                description: "Indica se o produto está ativo",
+              },
+
+              updatedAt: {
+                type: "string",
+                format: "date-time",
+                description: "Data da última atualização",
+              },
+            },
+          },
+
+          400: {
+            description: "Requisição inválida",
+            type: "object",
+            properties: {
+              message: {
+                type: "string",
+              },
+            },
+          },
+
+          404: {
+            description: "Produto não encontrado",
+            type: "object",
+            properties: {
+              message: {
+                type: "string",
+              },
+            },
+          },
+
+          401: {
+            description: "Não autorizado",
+            type: "object",
+            properties: {
+              message: {
+                type: "string",
+              },
+            },
+          },
+
+          500: {
+            description: "Erro interno do servidor",
+            type: "object",
+            properties: {
+              message: {
+                type: "string",
               },
             },
           },
         },
       },
     },
-    listProducts,
+    getProduct,
+  );
+
+  fastify.post(
+    "/",
+    {
+      schema: {
+        tags: ["Products"],
+        description: "Criar um novo produto",
+        required: ["name", "description", "price", "slug", "active", "stock"],
+        body: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            description: { type: "string" },
+            price: { type: "number" },
+            active: { type: "boolean" },
+            stock: { type: "number" },
+            colors: {
+              type: "array",
+              items: { type: "string" },
+            },
+
+            image: {
+              type: "array",
+              items: { type: "string" },
+            },
+
+            sizes: {
+              type: "array",
+              items: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+    createNewProduct,
   );
 }

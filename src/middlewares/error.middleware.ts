@@ -36,10 +36,19 @@ export const errorHandler = (
     });
   }
 
-  const statusCode = "statusCode" in error && typeof error.statusCode === "number" ? error.statusCode : 500;
+  const statusCode =
+    "statusCode" in error && typeof error.statusCode === "number"
+      ? error.statusCode
+      : 500;
 
   if (statusCode >= 500) {
     request.log.error(error);
+    console.log("===== ERRO COMPLETO =====");
+    console.log(error);
+    console.log("name:", error.name);
+    console.log("message:", error.message);
+    console.log("stack:", error.stack);
+    console.log("=========================");
   }
 
   return reply.status(statusCode).send({

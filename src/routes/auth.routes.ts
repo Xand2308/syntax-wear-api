@@ -40,12 +40,6 @@ export default async function authRoutes(fastify: FastifyInstance) {
               description: "CPF do usuário (opcional)",
               examples: ["123.456.789-00"],
             },
-            dateOfBirth: {
-              type: "string",
-              format: "date",
-              description: "Data de nascimento (opcional)",
-              examples: ["1995-05-20"],
-            },
             birthDate: {
               type: "string",
               format: "date",

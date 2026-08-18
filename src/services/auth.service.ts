@@ -3,7 +3,9 @@ import { prisma } from "../utils/prisma";
 import { AppError } from "../middlewares/error.middleware";
 import bcrypt from "bcrypt";
 
-export const registerUser = async (payload: RegisterRequest): Promise<UserResponse> => {
+export const registerUser = async (
+  payload: RegisterRequest,
+): Promise<UserResponse> => {
   const existingUser = await prisma.user.findUnique({
     where: { email: payload.email },
   });
