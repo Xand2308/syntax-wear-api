@@ -5,10 +5,12 @@ import {
   getProductById,
   createProduct,
   updateProduct,
+  deleteProduct,
 } from "../services/products.service";
 
 import {
   createProductSchema,
+  deleteProductSchema,
   productFiltersSchema,
   updateProductSchema,
 } from "../utils/validator";
@@ -67,7 +69,7 @@ export const updateExistingProduct = async (
 
   const validate = updateProductSchema.parse(body);
 
-  if(validate.name) {
+  if (validate.name) {
     validate.slug = slugify(validate.name, {
       lower: true,
       strict: true,
@@ -77,4 +79,15 @@ export const updateExistingProduct = async (
 
   const product = await updateProduct(Number(id), validate);
   reply.status(200).send(product);
+};
+
+export const deleteExistingProduct = async (
+  request: FastifyRequest<{ Params: { id: number } }>,
+  reply: FastifyReply,
+) => {
+  const { id } = request.params;
+
+const validade = deleteProductSchema.parse({ id });
+
+  await deleteProduct(validade.id);
 };
