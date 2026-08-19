@@ -1,3 +1,4 @@
+import { StreamDestroyOptions } from "node:quic";
 import { boolean } from "zod";
 
 export interface ProductFilters {
@@ -46,5 +47,14 @@ export interface CreateProduct {
   slug: string;
   stock: number;
   active: boolean;
-  image?: string[];
+  image?: string;
+}
+
+export interface UpdateProduct extends Partial<CreateProduct> {
+  name?: string;
+  description?: string;
+  price?: number;
+  slug?: string;
+  stock?: number;
+  active?: boolean;
 }
