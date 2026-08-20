@@ -20,18 +20,31 @@ model User {
 }
 
 model Product {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   name        String
   description String?
   price       Decimal
-  stock       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  slug        String?  @unique
+  stock       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  slug        String?   @unique
   colors      Json?
   sizes       Json?
-  active      Boolean? @default(true)
+  active      Boolean?  @default(true)
   images      Json?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  categoryId  Int?
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  slug        String    @unique
+  description String?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
 }
 
 enum Role {

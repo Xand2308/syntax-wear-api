@@ -7,9 +7,11 @@ import {
   deleteExistingProduct,
 } from "../controllers/products.controller";
 import { boolean } from "zod";
+import { authenticate } from "../middlewares/auth.middlewares";
 
 export default async function productRoutes(fastify: FastifyInstance) {
   // Listar produtos
+  fastify.addHook("onRequest",authenticate);
   fastify.get(
     "/",
     {
