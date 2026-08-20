@@ -87,6 +87,13 @@ export const updateProductSchema = z.object({
   categoryId: z.number().int().min(1, "ID de categoria inválido").optional(),
 });
 
+export const updateCategorySchema = z.object({
+  name: z.string().min(1, "Nome é obrigatório").optional(),
+  description: z.string().optional(),
+  slug: z.string().min(1, "Slug obrigatório").optional(),
+  active: z.boolean().optional(),
+});
+
 export const deleteProductSchema = z.object({
   id: z.number().int().min(1, "ID inválido"),
 });
