@@ -1,3 +1,4 @@
+import { SignRawPrivateKeyInput } from "node:crypto";
 import { StreamDestroyOptions } from "node:quic";
 import { boolean } from "zod";
 
@@ -16,6 +17,13 @@ export interface CategoryFilters {
   page?: number;
   limit?: number;
   search?: string;
+}
+
+export interface CreateCategory {
+  name: string;
+  description?: string;
+  slug: string;
+  active: boolean;
 }
 
 export interface AuthRequest {

@@ -1,60 +1,75 @@
 import { prisma } from "../utils/prisma";
-import { CategoryFilters } from "../types";
+import { CategoryFilters, CreateCategory } from "../types";
+import slugify from "slugify";
 
 export const getCategories = async (filters: CategoryFilters) => {
-	const { search, page = 1, limit = 10 } = filters;
+  const { search, page = 1, limit = 10 } = filters;
 
-	const where: any = {
-		active: true,
-	};
+  const where: any = {
+    active: true,
+  };
 
-	// Filtro por busca no nome
-	if (search && search.trim()) {
-		where.name = {
-			contains: search,
-			mode: "insensitive",
-		};
-	}
+  // Filtro por busca no nome
+  if (search && search.trim()) {
+    where.name = {
+      contains: search,
+      mode: "insensitive",
+    };
+  }
 
-	// Paginação
-	const skip = (Number(page) - 1) * Number(limit);
-	const take = Number(limit);
+  // Paginação
+  const skip = (Number(page) - 1) * Number(limit);
+  const take = Number(limit);
 
-	try {
-		// Buscar categorias com filtros
-		const [categories, total] = await Promise.all([
-			prisma.category.findMany({
-				where,
-				skip,
-				take,
-				orderBy: {
-					name: "asc",
-				},
-			}),
-			prisma.category.count({ where }),
-		]);
+  try {
+    // Buscar categorias com filtros
+    const [categories, total] = await Promise.all([
+      prisma.category.findMany({
+        where,
+        skip,
+        take,
+        orderBy: {
+          name: "asc",
+        },
+      }),
+      prisma.category.count({ where }),
+    ]);
 
-		return {
-			data: categories,
-			total,
-			page,
-			limit,
-			totalPages: Math.ceil(total / limit),
-		};
-	} catch (error) {
-		console.error("Erro ao buscar categorias:", error);
-		throw error;
-	}
+    return {
+      data: categories,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  } catch (error) {
+    console.error("Erro ao buscar categorias:", error);
+    throw error;
+  }
 };
 
 export const getCategoryById = async (id: number) => {
-	const category = await prisma.category.findUnique({
-		where: { id },
-	});
+  const category = await prisma.category.findUnique({
+    where: { id },
+  });
 
-	if (!category) {
-		throw new Error("Categoria não encontrada");
-	}
+  if (!category) {
+    throw new Error("Categoria não encontrada");
+  }
 
-	return category;
+  return category;
+};
+
+export const createCategory = async (data: CreateCategory) => {
+  const existingCategory = await prisma.category.findUnique({
+    where: { slug: data.slug },
+  });
+
+  if (existingCategory) {
+    throw new Error("Slug já existe. Escolha outro nome para a categoria");
+  }
+
+  const newCategory = await prisma.category.create({ data });
+
+  return newCategory;
 };

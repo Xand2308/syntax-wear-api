@@ -1,7 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify";
-import { CategoryFilters } from "../types";
-import { getCategories, getCategoryById } from "../services/categories.service";
-import { categoryFiltersSchema } from "../utils/validators";
+import { CategoryFilters, CreateCategory } from "../types";
+import { createCategory, getCategories, getCategoryById } from "../services/categories.service";
+import { categoryFiltersSchema, createCategorySchema } from "../utils/validators";
+import slugify from "slugify";
 
 export const listCategories = async (request: FastifyRequest<{ Querystring: CategoryFilters }>, reply: FastifyReply) => {
 	const filters = categoryFiltersSchema.parse(request.query);
@@ -13,3 +14,18 @@ export const getCategory = async (request: FastifyRequest<{ Params: { id: number
 	const category = await getCategoryById(request.params.id);
 	reply.status(200).send(category);
 };
+
+export const createNewCategory = async(request: FastifyRequest<{Body: CreateCategory}>, reply: FastifyReply) => {
+	const body = request.body;
+
+	body.slug = slugify(body.name, {
+		lower: true,
+		strict: true,
+		locale: "pt"
+	})
+
+	const validate = createCategorySchema.parse(body);
+	await createCategory(validate)
+
+	reply.status(201).send({ message: "Categoria criada com sucesso"})
+}
