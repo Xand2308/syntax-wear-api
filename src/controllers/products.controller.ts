@@ -13,7 +13,7 @@ import {
   deleteProductSchema,
   productFiltersSchema,
   updateProductSchema,
-} from "../utils/validator";
+} from "../utils/validators";
 import slugify from "slugify";
 import { request } from "node:http";
 import { partial } from "zod/mini";
@@ -90,4 +90,6 @@ export const deleteExistingProduct = async (
 const validade = deleteProductSchema.parse({ id });
 
   await deleteProduct(validade.id);
+
+  reply.status(204).send({message: "Produto deletado com sucesso!"})
 };
