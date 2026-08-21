@@ -1,28 +1,28 @@
-import { OrderFilters, CreateOrder, UpdateOrder } from '../types'
-import { prisma } from '../utils/prisma'
+import { OrderFilters, CreateOrder, UpdateOrder } from "../types";
+import { prisma } from "../utils/prisma";
 
 export async function getOrders(filters: OrderFilters = {}) {
-  const page = filters.page || 1
-  const limit = filters.limit || 10
-  const skip = (page - 1) * limit
+  const page = filters.page || 1;
+  const limit = filters.limit || 10;
+  const skip = (page - 1) * limit;
 
-  const where: any = {}
+  const where: any = {};
 
   if (filters.status) {
-    where.status = filters.status
+    where.status = filters.status;
   }
 
   if (filters.userId) {
-    where.userId = filters.userId
+    where.userId = filters.userId;
   }
 
   if (filters.startDate || filters.endDate) {
-    where.createdAt = {}
+    where.createdAt = {};
     if (filters.startDate) {
-      where.createdAt.gte = new Date(filters.startDate)
+      where.createdAt.gte = new Date(filters.startDate);
     }
     if (filters.endDate) {
-      where.createdAt.lte = new Date(filters.endDate)
+      where.createdAt.lte = new Date(filters.endDate);
     }
   }
 
@@ -31,7 +31,7 @@ export async function getOrders(filters: OrderFilters = {}) {
       where,
       skip,
       take: limit,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       include: {
         user: {
           select: {
@@ -53,7 +53,7 @@ export async function getOrders(filters: OrderFilters = {}) {
       },
     }),
     prisma.order.count({ where }),
-  ])
+  ]);
 
   return {
     data: orders,
@@ -61,7 +61,7 @@ export async function getOrders(filters: OrderFilters = {}) {
     page,
     limit,
     totalPages: Math.ceil(total / limit),
-  }
+  };
 }
 
 export async function getOrderById(id: number) {
@@ -88,64 +88,68 @@ export async function getOrderById(id: number) {
         },
       },
     },
-  })
+  });
 
   if (!order) {
-    throw new Error('Pedido não encontrado')
+    throw new Error("Pedido não encontrado");
   }
 
-  return order
+  return order;
 }
 
 export async function createOrder(data: CreateOrder) {
   // 1. Buscar todos os produtos para validação
-  const productIds = data.items.map(item => item.productId)
+  const productIds = data.items.map((item) => item.productId);
   const products = await prisma.product.findMany({
     where: { id: { in: productIds } },
     include: { category: true },
-  })
+  });
 
   // 2. Validar que todos os produtos existem
   if (products.length !== productIds.length) {
-    const foundIds = products.map(p => p.id)
-    const missingIds = productIds.filter(id => !foundIds.includes(id))
-    throw new Error(`Produto(s) com ID ${missingIds.join(', ')} não encontrado(s)`)
+    const foundIds = products.map((p) => p.id);
+    const missingIds = productIds.filter((id) => !foundIds.includes(id));
+    throw new Error(
+      `Produto(s) com ID ${missingIds.join(", ")} não encontrado(s)`,
+    );
   }
 
   // 3. Criar mapa de produtos para acesso rápido
-  const productMap = new Map(products.map(p => [p.id, p]))
+  const productMap = new Map(products.map((p) => [p.id, p]));
 
   // 4. Validações e cálculo de total
-  let calculatedTotal = 0
+  let calculatedTotal = 0;
 
   for (const item of data.items) {
-    const product = productMap.get(item.productId)!
+    const product = productMap.get(item.productId)!;
 
     // Verificar se produto está ativo
     if (!product.active) {
-      throw new Error(`Produto ${product.name} está inativo`)
+      throw new Error(`Produto ${product.name} está inativo`);
     }
 
     // Verificar estoque disponível
     if (product.stock < item.quantity) {
       throw new Error(
-        `Estoque insuficiente para ${product.name}. Disponível: ${product.stock}, solicitado: ${item.quantity}`
-      )
+        `Estoque insuficiente para ${product.name}. Disponível: ${product.stock}, solicitado: ${item.quantity}`,
+      );
     }
 
     // Verificar se produto tem sizes e se size foi informado
-    const productSizes = (product.sizes as any) || []
+    const productSizes = (product.sizes as any) || [];
     if (productSizes.length > 0) {
       if (!item.size) {
-        throw new Error(`Produto ${product.name} requer seleção de tamanho`)
+        throw new Error(`Produto ${product.name} requer seleção de tamanho`);
       }
       if (!productSizes.includes(item.size)) {
-        throw new Error(`Tamanho ${item.size} não disponível para ${product.name}`)
+        throw new Error(
+          `Tamanho ${item.size} não disponível para ${product.name}`,
+        );
       }
     }
 
     // Calcular total (usar preço atual do produto como snapshot)
-    calculatedTotal += Number(product.price) * item.quantity
+    calculatedTotal += Number(product.price) * item.quantity;
   }
 
   // 5. Criar pedido com transação atômica
@@ -155,16 +159,16 @@ export async function createOrder(data: CreateOrder) {
       data: {
         userId: data.userId,
         total: calculatedTotal,
-        status: 'PENDING',
+        status: "PENDING",
         shippingAddress: data.shippingAddress as any,
         paymentMethod: data.paymentMethod,
       },
-    })
+    });
 
     // 5.2 Criar OrderItems com snapshot de preço
     await Promise.all(
-      data.items.map(item => {
-        const product = productMap.get(item.productId)!
+      data.items.map((item) => {
+        const product = productMap.get(item.productId)!;
         return tx.orderItem.create({
           data: {
             orderId: newOrder.id,
@@ -173,34 +177,34 @@ export async function createOrder(data: CreateOrder) {
             quantity: item.quantity,
             size: item.size,
           },
-        })
-      })
-    )
+        });
+      }),
+    );
 
     // 5.3 Decrementar estoque de cada produto
     await Promise.all(
-      data.items.map(item =>
+      data.items.map((item) =>
         tx.product.update({
           where: { id: item.productId },
           data: { stock: { decrement: item.quantity } },
-        })
-      )
-    )
+        }),
+      ),
+    );
 
-    return newOrder
-  })
+    return newOrder;
+  });
 
-  return order
+  return order;
 }
 
 export async function updateOrder(id: number, data: UpdateOrder) {
   // Verificar se pedido existe
   const existingOrder = await prisma.order.findUnique({
     where: { id },
-  })
+  });
 
   if (!existingOrder) {
-    throw new Error('Pedido não encontrado')
+    throw new Error("Pedido não encontrado");
   }
 
   // Atualizar pedido
@@ -231,35 +235,35 @@ export async function updateOrder(id: number, data: UpdateOrder) {
         },
       },
     },
-  })
+  });
 
-  return updatedOrder
+  return updatedOrder;
 }
 
 export async function cancelOrder(id: number) {
   // Verificar se pedido existe
   const existingOrder = await prisma.order.findUnique({
     where: { id },
-  })
+  });
 
   if (!existingOrder) {
-    throw new Error('Pedido não encontrado')
+    throw new Error("Pedido não encontrado");
   }
 
   // Verificar se pedido já foi cancelado
-  if (existingOrder.status === 'CANCELLED') {
-    throw new Error('Pedido já está cancelado')
+  if (existingOrder.status === "CANCELLED") {
+    throw new Error("Pedido já está cancelado");
   }
 
   // Verificar se pedido já foi entregue
-  if (existingOrder.status === 'DELIVERED') {
-    throw new Error('Não é possível cancelar um pedido já entregue')
+  if (existingOrder.status === "DELIVERED") {
+    throw new Error("Não é possível cancelar um pedido já entregue");
   }
 
   // Atualizar status para CANCELLED (sem reversão de estoque)
   const cancelledOrder = await prisma.order.update({
     where: { id },
-    data: { status: 'CANCELLED' },
+    data: { status: "CANCELLED" },
     include: {
       user: {
         select: {
@@ -279,7 +283,7 @@ export async function cancelOrder(id: number) {
         },
       },
     },
-  })
+  });
 
-  return cancelledOrder
+  return cancelledOrder;
 }
