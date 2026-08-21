@@ -81,3 +81,50 @@ export interface UpdateProduct extends Partial<CreateProduct> {
   stock?: number;
   active?: boolean;
 }
+
+// Order Types
+
+export interface OrderFilters {
+  page?: number;
+  limit?: number;
+  status?: "PENDING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED";
+  userId?: number;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface OrderItemInput {
+  productId: number;
+  quantity: number;
+  size?: string;
+}
+
+export interface CreateOrder {
+  userId?: number;
+  items: OrderItemInput[];
+  shippingAddress: {
+    cep: string;
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    country?: string;
+  };
+  paymentMethod: string;
+}
+
+export interface UpdateOrder {
+  status?: "PENDING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED";
+  shippingAddress?: {
+    cep?: string;
+    street?: string;
+    number?: string;
+    complement?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+  };
+}

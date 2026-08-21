@@ -97,3 +97,65 @@ export const updateCategorySchema = z.object({
 export const deleteProductSchema = z.object({
   id: z.number().int().min(1, "ID inválido"),
 });
+
+// Order validation schemas
+export const orderFiltersSchema = z.object({
+  page: z.coerce
+    .number()
+    .int()
+    .min(1, "Página deve ser no mínimo 1")
+    .optional(),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1, "Limite deve ser no mínimo 1")
+    .optional(),
+  status: z
+    .enum(["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"])
+    .optional(),
+  userId: z.coerce.number().int().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
+
+export const createOrderSchema = z.object({
+  userId: z.number().int().positive().optional(),
+
+  items: z.array(
+    z.object({
+      productId: z.number().int().positive(),
+      quantity: z.number().int().positive(),
+      size: z.string().optional(),
+    })
+  ).min(1, "O pedido deve ter pelo menos um item"),
+
+  shippingAddress: z.object({
+    cep: z.string().min(1, "CEP é obrigatório"),
+    street: z.string().min(1, "Rua é obrigatória"),
+    number: z.string().min(1, "Número é obrigatório"),
+    complement: z.string().optional(),
+    neighborhood: z.string().min(1, "Bairro é obrigatório"),
+    city: z.string().min(1, "Cidade é obrigatória"),
+    state: z.string().min(1, "Estado é obrigatório"),
+    country: z.string().optional(),
+  }),
+
+  paymentMethod: z.string().min(1, "Forma de pagamento é obrigatória"),
+});
+
+export const updateOrderSchema = z.object({
+  status: z
+    .enum(["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"])
+    .optional(),
+
+  shippingAddress: z.object({
+    cep: z.string().optional(),
+    street: z.string().optional(),
+    number: z.string().optional(),
+    complement: z.string().optional(),
+    neighborhood: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
+  }).optional(),
+});
