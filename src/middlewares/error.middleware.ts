@@ -16,5 +16,12 @@ export const errorHandler = (error: FastifyError, request: FastifyRequest, reply
 		});
 	}
 
-	return reply.status(500).send({ message: "Erro interno do servidor", debug: error.message });
+
+
+	console.error("ERRO REAL:", error);
+return reply.status(500).send({
+    message: "Erro interno do servidor",
+    debug: error.message,
+});
+	//return reply.status(500).send({ message: "Erro interno do servidor", debug: error.message });
 }

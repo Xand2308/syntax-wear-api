@@ -85,11 +85,22 @@ export const deleteExistingProduct = async (
   request: FastifyRequest<{ Params: { id: number } }>,
   reply: FastifyReply,
 ) => {
-  const { id } = request.params;
+  try {
+    const { id } = request.params;
 
-const validade = deleteProductSchema.parse({ id });
+    const validade = deleteProductSchema.parse({ id });
 
-  await deleteProduct(validade.id);
+    await deleteProduct(validade.id);
 
-  reply.status(204).send({message: "Produto deletado com sucesso!"})
+    return reply.status(200).send({
+      message: "Produto deletado com sucesso!",
+    });
+  } catch (error) {
+    console.error("ERRO AO DELETAR PRODUTO:", error);
+
+    return reply.status(500).send({
+      message: "Erro ao deletar produto",
+      debug: error instanceof Error ? error.message : String(error),
+    });
+  }
 };
