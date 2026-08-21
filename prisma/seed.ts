@@ -1,5 +1,13 @@
 import 'dotenv/config'
-import { prisma } from '../src/utils/prisma'
+
+import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '@prisma/client'
+
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+})
+
+const prisma = new PrismaClient({ adapter })
 
 const categories = [
   {
@@ -59,10 +67,7 @@ const products = [
     description: 'Camiseta clássica, confortável e versátil.',
     price: '29.99',
     colors: ['Black', 'White'],
-    images: [
-      'https://placehold.co/600x400?text=classic-tee+1',
-      'https://placehold.co/600x400?text=classic-tee+2',
-    ],
+    images: ['https://placehold.co/600x400?text=classic-tee+1', 'https://placehold.co/600x400?text=classic-tee+2'],
     sizes: ['S', 'M', 'L'],
     stock: 120,
     active: true,
@@ -170,75 +175,225 @@ const products = [
 
 async function main() {
   try {
-    // Limpar dados existentes
+    // Limpar dados existentes (em ordem devido às FKs)
+    await prisma.orderItem.deleteMany({})
+    await prisma.order.deleteMany({})
     await prisma.product.deleteMany({})
     await prisma.category.deleteMany({})
-
+    await prisma.user.deleteMany({})
     console.log('🗑️  Dados antigos removidos')
 
-    // Criar categorias
-    const createdCategories = await prisma.category.createMany({
-      data: categories,
+    // Criar usuários
+    const user1 = await prisma.user.create({
+      data: {
+        firstName: 'João',
+        lastName: 'Silva',
+        email: 'joao@example.com',
+        password: '$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FPM0xLqc8y8eMONLr9xOhQ1lUPXIEki', // senha: password123
+        cpf: '12345678901',
+        phone: '11999999999',
+        role: 'USER',
+      },
     })
 
+    const user2 = await prisma.user.create({
+      data: {
+        firstName: 'Maria',
+        lastName: 'Santos',
+        email: 'maria@example.com',
+        password: '$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FPM0xLqc8y8eMONLr9xOhQ1lUPXIEki', // senha: password123
+        phone: '11988888888',
+        role: 'USER',
+      },
+    })
+
+    const admin = await prisma.user.create({
+      data: {
+        firstName: 'Admin',
+        lastName: 'System',
+        email: 'admin@example.com',
+        password: '$2b$10$K7L1OJ45/4Y2nIvhRVpCe.FPM0xLqc8y8eMONLr9xOhQ1lUPXIEki', // senha: password123
+        role: 'ADMIN',
+      },
+    })
+
+    console.log(`✅ 3 usuários criados (${user1.email}, ${user2.email}, ${admin.email})`)
+
+    // Criar categorias
+    const createdCategories = await prisma.category.createMany({ data: categories })
     console.log(`✅ ${createdCategories.count} categorias criadas`)
 
     // Buscar categorias criadas para obter IDs
-    const camisetas = await prisma.category.findUnique({
-      where: { slug: 'camisetas' },
-    })
-
-    const moletons = await prisma.category.findUnique({
-      where: { slug: 'moletons' },
-    })
-
-    const calcas = await prisma.category.findUnique({
-      where: { slug: 'calcas' },
-    })
-
-    const shorts = await prisma.category.findUnique({
-      where: { slug: 'shorts' },
-    })
-
-    const acessorios = await prisma.category.findUnique({
-      where: { slug: 'acessorios' },
-    })
-
-    const vestidos = await prisma.category.findUnique({
-      where: { slug: 'vestidos' },
-    })
-
-    const calcados = await prisma.category.findUnique({
-      where: { slug: 'calcados' },
-    })
-
-    const meias = await prisma.category.findUnique({
-      where: { slug: 'meias' },
-    })
+    const camisetas = await prisma.category.findUnique({ where: { slug: 'camisetas' } })
+    const moletons = await prisma.category.findUnique({ where: { slug: 'moletons' } })
+    const calcas = await prisma.category.findUnique({ where: { slug: 'calcas' } })
+    const shorts = await prisma.category.findUnique({ where: { slug: 'shorts' } })
+    const acessorios = await prisma.category.findUnique({ where: { slug: 'acessorios' } })
+    const vestidos = await prisma.category.findUnique({ where: { slug: 'vestidos' } })
+    const calcados = await prisma.category.findUnique({ where: { slug: 'calcados' } })
+    const meias = await prisma.category.findUnique({ where: { slug: 'meias' } })
 
     // Adicionar categoryId aos produtos
     const productsWithCategory = [
-      { ...products[0], categoryId: camisetas!.id },
-      { ...products[1], categoryId: moletons!.id },
-      { ...products[2], categoryId: calcas!.id },
-      { ...products[3], categoryId: shorts!.id },
-      { ...products[4], categoryId: acessorios!.id },
-      { ...products[5], categoryId: vestidos!.id },
-      { ...products[6], categoryId: calcados!.id },
-      { ...products[7], categoryId: acessorios!.id },
-      { ...products[8], categoryId: acessorios!.id },
-      { ...products[9], categoryId: meias!.id },
+      { ...products[0], categoryId: camisetas!.id },      // Classic Tee
+      { ...products[1], categoryId: moletons!.id },       // Vintage Hoodie
+      { ...products[2], categoryId: calcas!.id },         // Slim Jeans
+      { ...products[3], categoryId: shorts!.id },         // Sport Shorts
+      { ...products[4], categoryId: acessorios!.id },     // Leather Belt
+      { ...products[5], categoryId: vestidos!.id },       // Summer Dress
+      { ...products[6], categoryId: calcados!.id },       // Running Shoes
+      { ...products[7], categoryId: acessorios!.id },     // Beanie Cap
+      { ...products[8], categoryId: acessorios!.id },     // Canvas Backpack
+      { ...products[9], categoryId: meias!.id },          // Striped Socks
     ]
 
     // Criar produtos
-    const createdProducts = await prisma.product.createMany({
-      data: productsWithCategory,
+    const createdProducts = await prisma.product.createMany({ data: productsWithCategory })
+    console.log(`✅ ${createdProducts.count} produtos criados com categorias vinculadas`)
+
+    // Buscar produtos criados para obter IDs
+    const classicTee = await prisma.product.findUnique({ where: { slug: 'classic-tee' } })
+    const vintageHoodie = await prisma.product.findUnique({ where: { slug: 'vintage-hoodie' } })
+    const slimJeans = await prisma.product.findUnique({ where: { slug: 'slim-jeans' } })
+    const sportShorts = await prisma.product.findUnique({ where: { slug: 'sport-shorts' } })
+    const runningShoes = await prisma.product.findUnique({ where: { slug: 'running-shoes' } })
+    const summerDress = await prisma.product.findUnique({ where: { slug: 'summer-dress' } })
+
+    // Criar pedidos com OrderItems
+    const order1 = await prisma.order.create({
+      data: {
+        userId: user1.id,
+        total: 109.98, // 2x Classic Tee (29.99 cada) + 1x Sport Shorts (24.00) + frete estimado 26.00
+        status: 'PAID',
+        shippingAddress: {
+          cep: '01310100',
+          street: 'Av. Paulista',
+          number: '1578',
+          complement: 'Apto 101',
+          neighborhood: 'Bela Vista',
+          city: 'São Paulo',
+          state: 'SP',
+          country: 'BR',
+        },
+        paymentMethod: 'credit_card',
+        items: {
+          create: [
+            {
+              productId: classicTee!.id,
+              price: 29.99,
+              quantity: 2,
+              size: 'M',
+            },
+            {
+              productId: sportShorts!.id,
+              price: 24.00,
+              quantity: 1,
+              size: 'L',
+            },
+          ],
+        },
+      },
     })
 
-    console.log(
-      `✅ ${createdProducts.count} produtos criados com categorias vinculadas`,
-    )
+    const order2 = await prisma.order.create({
+      data: {
+        userId: user2.id,
+        total: 229.89, // 1x Vintage Hoodie (59.90) + 1x Running Shoes (119.99) + 1x Summer Dress (49.00) + frete estimado 1.00
+        status: 'SHIPPED',
+        shippingAddress: {
+          cep: '20040020',
+          street: 'Av. Rio Branco',
+          number: '156',
+          neighborhood: 'Centro',
+          city: 'Rio de Janeiro',
+          state: 'RJ',
+          country: 'BR',
+        },
+        paymentMethod: 'pix',
+        items: {
+          create: [
+            {
+              productId: vintageHoodie!.id,
+              price: 59.90,
+              quantity: 1,
+              size: 'L',
+            },
+            {
+              productId: runningShoes!.id,
+              price: 119.99,
+              quantity: 1,
+              size: '42',
+            },
+            {
+              productId: summerDress!.id,
+              price: 49.00,
+              quantity: 1,
+              size: 'M',
+            },
+          ],
+        },
+      },
+    })
 
+    const order3 = await prisma.order.create({
+      data: {
+        userId: user1.id,
+        total: 79.50, // 1x Slim Jeans (79.50)
+        status: 'PENDING',
+        shippingAddress: {
+          cep: '01310100',
+          street: 'Av. Paulista',
+          number: '1578',
+          complement: 'Apto 101',
+          neighborhood: 'Bela Vista',
+          city: 'São Paulo',
+          state: 'SP',
+          country: 'BR',
+        },
+        paymentMethod: 'boleto',
+        items: {
+          create: [
+            {
+              productId: slimJeans!.id,
+              price: 79.50,
+              quantity: 1,
+              size: '32',
+            },
+          ],
+        },
+      },
+    })
+
+    // Guest order (sem userId)
+    const order4 = await prisma.order.create({
+      data: {
+        total: 179.97, // 3x Classic Tee (29.99 cada) + frete estimado 90.00
+        status: 'DELIVERED',
+        shippingAddress: {
+          cep: '30130100',
+          street: 'Av. Afonso Pena',
+          number: '867',
+          neighborhood: 'Centro',
+          city: 'Belo Horizonte',
+          state: 'MG',
+          country: 'BR',
+        },
+        paymentMethod: 'credit_card',
+        items: {
+          create: [
+            {
+              productId: classicTee!.id,
+              price: 29.99,
+              quantity: 3,
+              size: 'L',
+            },
+          ],
+        },
+      },
+    })
+
+    console.log(`✅ 4 pedidos criados (Order IDs: ${order1.id}, ${order2.id}, ${order3.id}, ${order4.id})`)
+    
     console.log('🎉 Seed finalizado com sucesso!')
   } catch (error) {
     console.error('❌ Erro no seed:', error)
