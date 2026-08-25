@@ -64,7 +64,11 @@ export async function getOrders(filters: OrderFilters = {}) {
   };
 }
 
-export async function getOrderById(id: number) {
+export async function getOrderById(
+  id: number,
+  requestingUserId: number,
+  isAdmin: boolean,
+) {
   const order = await prisma.order.findUnique({
     where: { id },
     include: {
@@ -92,6 +96,11 @@ export async function getOrderById(id: number) {
 
   if (!order) {
     throw new Error("Pedido não encontrado");
+  }
+
+  // Verificar se o usuário pode acessar o pedido 
+  if(!isAdmin && order.userId !== requestingUserId) {
+    throw new Error("Você não tem permissão para acessar este pedido!")
   }
 
   return order;

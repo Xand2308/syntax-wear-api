@@ -11,7 +11,15 @@ export async function listOrders(request: FastifyRequest, reply: FastifyReply) {
 
 export async function getOrder(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
   const id = parseInt(request.params.id, 10)
-  const order = await getOrderById(id)
+
+  // Estrair userId e role do Token JWR 
+  const user = request.user as any 
+  const requestingUserId = user.userId
+  const isAdmin = user.role === "ADMIN"
+
+
+
+  const order = await getOrderById(id, requestingUserId, isAdmin)
   reply.status(200).send(order)
 }
 

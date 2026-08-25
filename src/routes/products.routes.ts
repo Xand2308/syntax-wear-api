@@ -299,7 +299,7 @@ export default async function productRoutes(fastify: FastifyInstance) {
 		updateExistingProduct
 	);
 
-	fastify.delete<{ Params: { id: number } }>(
+	fastify.delete<{ Params: { id: string } }>(
 		"/:id",
 		{
 			onRequest: [requireAdmin], // Requer autenticação + role ADMIN
