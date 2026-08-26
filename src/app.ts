@@ -1,7 +1,7 @@
 // Require the framework and instantiate it
 
 // ESM
-import Fastify, { FastifyError } from "fastify";
+import Fastify, { FastifyInstance } from "fastify";
 import "dotenv/config";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
@@ -13,110 +13,101 @@ import scalar from "@scalar/fastify-api-reference";
 import jwt from "@fastify/jwt";
 import authRoutes from "./routes/auth.routes";
 import { errorHandler } from "./middlewares/error.middleware";
-import csrf from "@fastify/csrf-protection";
 
 const PORT = parseInt(process.env.PORT ?? "3000");
 
-const fastify = Fastify({
-  logger: {
-    level: process.env.LOG_LEVEL || "info",
-    serializers: {
-      req(request) {
-        return {
-          method: request.method,
-          url: request.url,
-        };
-      },
-      res(reply) {
-        return {
-          statusCode: reply.statusCode,
-        };
-      },
-    },
-  },
-});
+export async function buildApp(): Promise<FastifyInstance> {
+	const fastify = Fastify({
+		logger: {
+			level: process.env.LOG_LEVEL || 'info',
+			serializers: {
+				req(request) {
+					return {
+						method: request.method,
+						url: request.url,
+						// ❌ NÃO logar body, headers com Authorization
+					};
+				},
+				res(reply) {
+					return {
+						statusCode: reply.statusCode,
+					};
+				}
+			}
+		}
+	});
 
-fastify.register(jwt, {
-  secret: process.env.JWT_SECRET!,
-});
+	fastify.register(jwt, {
+		secret: process.env.JWT_SECRET!
+	});
 
-fastify.register(cors, {
-  origin: true,
-  credentials: true,
-});
+	fastify.register(cors, {
+		origin: true,
+		credentials: true,
+	});
 
-fastify.register(helmet, {
-  contentSecurityPolicy: false,
-});
+	fastify.register(helmet, {
+		contentSecurityPolicy: false,
+	});
 
-fastify.register(csrf, {
-  cookieOpts: { signed: true },
-});
+	fastify.register(swagger, {
+		openapi: {
+			openapi: "3.0.0",
+			info: {
+				title: "Syntax Wear API",
+				description: "API para o e-commerce Syntax Wear",
+				version: "1.0.0",
+			},
+			servers: [
+				{
+					url: `http://localhost:${PORT}`,
+					description: "Servidor de desenvolvimento",
+				},
+			],
+			components: {
+				securitySchemes: {
+					bearerAuth: {
+						type: "http",
+						scheme: "bearer",
+						bearerFormat: "JWT",
+						description: "Autenticação via token JWT",
+					},
+				},
+			},
+		},
+	});
 
-fastify.register(swagger, {
-  openapi: {
-    openapi: "3.0.0",
-    info: {
-      title: "Syntax Wear API",
-      description: "API para o e-commerce Syntax Wear",
-      version: "1.0.0",
-    },
-    servers: [
-      {
-        url: `http://localhost:${PORT}`,
-        description: "Servidor de desenvolvimento",
-      },
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          bearerFormat: "JWT",
-          description: "Autenticação via token JWT",
-        },
-      },
-    },
-  },
-});
+	fastify.register(scalar, {
+		routePrefix: "/api-docs",
+		configuration: {
+			theme: "default",
+		},
+	});
 
-fastify.register(scalar, {
-  routePrefix: "/api-docs",
-  configuration: {
-    theme: "default",
-  },
-});
+	fastify.register(productRoutes, { prefix: "/products" });
+	fastify.register(categoryRoutes, { prefix: "/categories" });
+	fastify.register(orderRoutes, { prefix: "/orders" });
+	fastify.register(authRoutes, { prefix: "/auth" });
 
-fastify.register(productRoutes, { prefix: "/products" });
-fastify.register(categoryRoutes, { prefix: "/categories" });
-fastify.register(orderRoutes, { prefix: "/orders" });
-fastify.register(authRoutes, { prefix: "/auth" });
+	// Declare a route
+	fastify.get("/", async (request, reply) => {
+		return {
+			message: "E-commerce Syntax Wear API",
+			version: "1.0.0",
+			status: "running",
+		};
+	});
 
-// Declare a route
-fastify.get("/", async (request, reply) => {
-  return {
-    message: "E-commerce Syntax Wear API",
-    version: "1.0.0",
-    status: "running",
-  };
-});
+	fastify.get("/health", async (request, reply) => {
+		return {
+			status: "ok",
+			timestamp: new Date().toISOString(),
+		};
+	});
 
-fastify.get("/health", async (request, reply) => {
-  return {
-    status: "ok",
-    timestamp: new Date().toISOString(),
-  };
-});
+	fastify.setErrorHandler(errorHandler);
 
-fastify.setErrorHandler(errorHandler);
+	await fastify.ready();
 
-// Run the server!
-fastify.listen({ port: PORT }, function (err, address) {
-  if (err) {
-    fastify.log.error(err);
-    process.exit(1);
-  }
-  // Server is now listening on ${address}
-});
-
-export default fastify;
+	return fastify;
+}
