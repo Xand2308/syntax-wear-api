@@ -1,6 +1,5 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { prisma } from "../utils/prisma"
-
+import { prisma } from "../utils/prisma";
 
 export const authenticate = async (
   request: FastifyRequest,
@@ -9,14 +8,33 @@ export const authenticate = async (
   try {
     await request.jwtVerify();
 
-
-    // Extrair userId do token e buscar role de usuário
-
     const userId = (request.user as any).userId;
-    if(!userId) {
-      return reply.status(401).send({ message: "Token inválido. ID do usuário não encontrado."})
+
+    if (!userId) {
+      return reply
+        .status(401)
+        .send({ message: "Token inválido. ID do usuário não encontrado." });
     }
-    } catch (err) {
-    return reply.status(401).send({ message: "Token inválido ou expirado" });
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        role: true,
+      },
+    });
+
+    if (!user) {
+      return reply
+        .status(401)
+        .send({ message: "Usuário não encontrado." });
+    }
+
+    (request.user as any).userId = user.id;
+    (request.user as any).role = user.role;
+  } catch (err) {
+    return reply
+      .status(401)
+      .send({ message: "Token inválido ou expirado" });
   }
 };

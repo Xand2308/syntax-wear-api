@@ -37,8 +37,20 @@ export async function updateExistingOrder(
   reply: FastifyReply
 ) {
   const id = parseInt(request.params.id, 10)
+
+  const user = request.user as any
+  const requestingUserId = user.userId
+  const isAdmin = user.role === "ADMIN"
+
   const data = updateOrderSchema.parse(request.body as UpdateOrder)
-  const order = await updateOrder(id, data)
+
+  const order = await updateOrder(
+    id,
+    data,
+    requestingUserId,
+    isAdmin
+  )
+
   reply.status(200).send(order)
 }
 

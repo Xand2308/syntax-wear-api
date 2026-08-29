@@ -206,7 +206,12 @@ export async function createOrder(data: CreateOrder) {
   return order;
 }
 
-export async function updateOrder(id: number, data: UpdateOrder) {
+ export async function updateOrder(
+  id: number,
+  data: UpdateOrder,
+  requestingUserId: number,
+  isAdmin: boolean
+) {
   // Verificar se pedido existe
   const existingOrder = await prisma.order.findUnique({
     where: { id },
@@ -215,6 +220,9 @@ export async function updateOrder(id: number, data: UpdateOrder) {
   if (!existingOrder) {
     throw new Error("Pedido não encontrado");
   }
+  if (!isAdmin && existingOrder.userId !== requestingUserId) {
+  throw new Error("Você não tem permissão para atualizar este pedido!");
+}
 
   // Atualizar pedido
   const updatedOrder = await prisma.order.update({
