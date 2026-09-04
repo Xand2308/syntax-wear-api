@@ -18,10 +18,6 @@ export const authenticate = async (
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        role: true,
-      },
     });
 
     if (!user) {
@@ -30,11 +26,11 @@ export const authenticate = async (
         .send({ message: "Usuário não encontrado." });
     }
 
-    (request.user as any).userId = user.id;
-    (request.user as any).role = user.role;
+    const { password, ...userWithoutPassword } = user;
+
+  request.user = userWithoutPassword;
   } catch (err) {
-    return reply
-      .status(401)
+      reply.status(401)
       .send({ message: "Token inválido ou expirado" });
   }
 };

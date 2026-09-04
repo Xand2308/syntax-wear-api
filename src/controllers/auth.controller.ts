@@ -28,3 +28,6 @@ export const login = async (
     token,
   });
 };
+
+export const profile = async (request: FastifyRequest, reply: FastifyReply) => 
+reply.send(request.user);
