@@ -28,6 +28,7 @@
   },
   "homepage": "https://github.com/Xand2308/syntax-wear-api#readme",
   "dependencies": {
+    "@fastify/cookie": "^11.1.2",
     "@fastify/cors": "^11.3.0",
     "@fastify/csrf-protection": "^8.0.1",
     "@fastify/helmet": "^13.1.0",
