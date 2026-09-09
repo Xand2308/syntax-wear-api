@@ -38,7 +38,7 @@ export interface RegisterRequest extends AuthRequest {
     firstName: string;
     lastName: string;
     cpf?: string;
-    dateOfBirth?: string;
+    birthDate?: string;
     phone?: string;
 }
 

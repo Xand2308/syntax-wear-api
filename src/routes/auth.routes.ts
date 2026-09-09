@@ -170,5 +170,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         description: "Faz logout do usuário removendo o cookie JWT",
         security: [{ bearerAuth: [] }], // indica que a rota requer autenticação
       },
-    }, signOut);
+    },
+    signOut,
+  );
 }

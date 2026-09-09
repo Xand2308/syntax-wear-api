@@ -6,7 +6,6 @@ import {
 } from "../services/auth.service";
 import { AuthRequest, RegisterRequest } from "../types";
 import { loginSchema, registerSchema } from "../utils/validators";
-import { request } from "node:http";
 
 export const register = async (
   request: FastifyRequest,
@@ -14,12 +13,20 @@ export const register = async (
 ) => {
   const validation = registerSchema.parse(request.body as RegisterRequest);
 
-  const user = await registerUser(validation);
+  const user = await registerUser(validation, reply);
+  if (!user) return;
   const token = request.server.jwt.sign({ userId: user.id });
 
+  reply.setCookie("syntaxwear.token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24,
+  });
+
   reply.status(201).send({
-    user,
-    token,
+    user
   });
 };
 
@@ -44,7 +51,7 @@ export const login = async (
   });
 
   reply.status(200).send({
-    user,
+    user
   });
 };
 
@@ -84,12 +91,12 @@ export const googleLogin = async (
 };
 
 export const signOut = async (request: FastifyRequest, reply: FastifyReply) => {
-  reply.clearCookie("syntaxwear.token",{
+  reply.clearCookie("syntaxwear.token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-  })
+  });
 
-  reply.status(200).send({ message: "Usuário deslogado com sucesso."})
-}
+  reply.status(200).send({ message: "Usuário deslogado com sucesso." });
+};
