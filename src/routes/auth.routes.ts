@@ -1,6 +1,13 @@
 import { FastifyInstance } from "fastify";
-import { login, profile, register } from "../controllers/auth.controller";
+import {
+  googleLogin,
+  login,
+  profile,
+  register,
+  signOut,
+} from "../controllers/auth.controller";
 import { authenticate } from "../middlewares/auth.middleware";
+import { required } from "zod/mini";
 
 export default async function authRoutes(fastify: FastifyInstance) {
   fastify.post(
@@ -134,4 +141,34 @@ export default async function authRoutes(fastify: FastifyInstance) {
     },
     profile,
   );
+
+  fastify.post(
+    "/google",
+    {
+      schema: {
+        tags: ["Auth"],
+        description:
+          "Autentica um usuário via Google OAuth2 retorna um token JWT",
+        body: {
+          type: "object",
+          required: ["credential"],
+          properties: {
+            credential: { type: "string", description: "Credencial do Google" },
+          },
+        },
+      },
+    },
+    googleLogin,
+  );
+
+  fastify.post(
+    "/signout",
+    {
+      preHandler: [authenticate], // Protege a rota com o middleware de autenticação
+      schema: {
+        tags: ["Auth"],
+        description: "Faz logout do usuário removendo o cookie JWT",
+        security: [{ bearerAuth: [] }], // indica que a rota requer autenticação
+      },
+    }, signOut);
 }
