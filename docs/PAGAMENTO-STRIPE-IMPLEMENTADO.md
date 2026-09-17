@@ -40,8 +40,8 @@ O Checkout deve ser criado novamente depois de alterar `API_URL`, porque sessõe
 
 ## Fluxo esperado
 
-1. `POST /stripe/checkout` cria o pedido como `PENDING` e retorna `sessionId`.
-2. O cliente finaliza o pagamento no Checkout hospedado pelo Stripe.
-3. O Stripe confirma o pagamento.
+1. `POST /stripe/checkout` recebe itens, endereço e método de pagamento com o token do usuário.
+2. A API cria um único pedido como `PENDING` e retorna `sessionId` e `checkoutUrl`.
+3. O cliente redireciona para `checkoutUrl` e finaliza o pagamento no Stripe.
 4. O webhook ou o retorno `/stripe/success` atualiza o pedido para `PAID`.
-5. O mesmo status pode ser conferido no Supabase e no Prisma Studio.
+5. Como alternativa, um pedido já criado pode ser pago enviando `{ "orderId": 123 }`.

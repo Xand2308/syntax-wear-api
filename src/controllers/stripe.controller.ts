@@ -3,21 +3,31 @@ import {
   createStripeCheckoutService,
   syncOrderFromStripeSession,
 } from "../services/stripe.service";
-import { createOrderSchema } from "../utils/validators";
-import { createOrder } from "../services/orders.service";
+import { createOrderSchema, stripeCheckoutSchema } from "../utils/validators";
+import { createOrder, getOrderById } from "../services/orders.service";
 
 export class StripeController {
   async createCheckoutSession(request: FastifyRequest, reply: FastifyReply) {
-    const { items, shippingAddress, paymentMethod, userId, shippingCost } =
-      createOrderSchema.parse(request.body);
+    const user = request.user as { id: number } | undefined;
+    const checkoutData = stripeCheckoutSchema.parse(request.body);
+    if ("orderId" in checkoutData && !user) {
+      return reply.status(401).send({
+        message: "Autenticação necessária para pagar um pedido existente",
+      });
+    }
 
-    const order = await createOrder({
-      items,
-      shippingAddress,
-      paymentMethod,
-      userId,
-      shippingCost,
-    });
+    const order = "orderId" in checkoutData
+      ? await getOrderById(checkoutData.orderId, user!.id, false)
+      : await createOrder({
+          ...createOrderSchema.parse(checkoutData),
+          userId: user?.id,
+        });
+
+    if (order.status !== "PENDING") {
+      return reply.status(400).send({
+        message: "Somente pedidos pendentes podem iniciar o pagamento",
+      });
+    }
 
     const products = order.items.map((item) => ({
       id: item.product.id,
@@ -26,13 +36,16 @@ export class StripeController {
       quantity: item.quantity,
     }));
 
-    const { sessionId } = await createStripeCheckoutService({
+    const { sessionId, checkoutUrl } = await createStripeCheckoutService({
       products,
       orderId: order.id,
+      shippingCost: Number(order.shippingCost),
     });
 
     return reply.status(200).send({
       sessionId,
+      checkoutUrl,
+      url: checkoutUrl,
     });
   }
 
@@ -48,10 +61,12 @@ export class StripeController {
 
     const result = await syncOrderFromStripeSession(sessionId);
     const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:5173";
+    const redirectUrl = new URL(frontendUrl);
 
-    return reply.redirect(
-      `${frontendUrl}/success?orderId=${result.orderId}&status=${result.orderStatus}`,
-    );
+    redirectUrl.searchParams.set("orderId", String(result.orderId));
+    redirectUrl.searchParams.set("status", result.orderStatus);
+
+    return reply.redirect(redirectUrl.toString());
   }
 
   async syncCheckout(

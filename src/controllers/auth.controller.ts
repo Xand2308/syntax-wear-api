@@ -17,7 +17,7 @@ export const register = async (
   if (!user) return;
   const token = request.server.jwt.sign({ userId: user.id });
 
-  reply.setCookie("syntaxwear.token", token, {
+  reply.setCookie("Syntaxwear.token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -26,7 +26,8 @@ export const register = async (
   });
 
   reply.status(201).send({
-    user
+    user,
+    token,
   });
 };
 
@@ -51,7 +52,8 @@ export const login = async (
   });
 
   reply.status(200).send({
-    user
+    user,
+    token,
   });
 };
 
@@ -87,7 +89,7 @@ export const googleLogin = async (
     maxAge: 60 * 60 * 24,
   });
 
-  reply.status(200).send({ user });
+  reply.status(200).send({ user, token });
 };
 
 export const signOut = async (request: FastifyRequest, reply: FastifyReply) => {

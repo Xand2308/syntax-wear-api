@@ -275,6 +275,7 @@ async function main() {
           state: 'SP',
           country: 'BR',
         },
+        shippingCost: 15,
         paymentMethod: 'credit_card',
         items: {
           create: [
@@ -310,6 +311,7 @@ async function main() {
           country: 'BR',
         },
         paymentMethod: 'pix',
+        shippingCost: 15,
         items: {
           create: [
             {
@@ -351,6 +353,7 @@ async function main() {
           country: 'BR',
         },
         paymentMethod: 'boleto',
+        shippingCost: 15,
         items: {
           create: [
             {
@@ -379,6 +382,7 @@ async function main() {
           country: 'BR',
         },
         paymentMethod: 'credit_card',
+        shippingCost: 15,
         items: {
           create: [
             {

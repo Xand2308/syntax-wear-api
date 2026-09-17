@@ -19,9 +19,10 @@ export const errorHandler = (error: FastifyError, request: FastifyRequest, reply
 
 
 	console.error("ERRO REAL:", error);
-return reply.status(500).send({
-    message: "Erro interno do servidor",
-    debug: error.message,
-});
-	//return reply.status(500).send({ message: "Erro interno do servidor", debug: error.message });
+
+	const isDevelopment = process.env.NODE_ENV !== "production";
+	return reply.status(error.statusCode && error.statusCode >= 400 ? error.statusCode : 500).send({
+		message: isDevelopment ? error.message : "Erro interno do servidor",
+		...(isDevelopment ? { debug: error.message } : {}),
+	});
 }

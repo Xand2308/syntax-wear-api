@@ -263,7 +263,10 @@ export default async function orderRoutes(fastify: FastifyInstance) {
               properties: {
                 cep: { type: "string", description: "CEP com 8 dígitos" },
                 street: { type: "string", description: "Rua/Avenida" },
-                number: { type: "string", description: "Número" },
+                number: {
+                  anyOf: [{ type: "string" }, { type: "number" }],
+                  description: "Número",
+                },
                 complement: {
                   type: "string",
                   description: "Complemento (opcional)",
@@ -281,6 +284,10 @@ export default async function orderRoutes(fastify: FastifyInstance) {
             paymentMethod: {
               type: "string",
               description: "Método de pagamento (ex: credit_card, pix, boleto)",
+            },
+            shippingCost: {
+              anyOf: [{ type: "number", minimum: 0 }, { type: "string" }],
+              description: "Valor do frete (opcional)",
             },
           },
         },

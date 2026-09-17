@@ -1,4 +1,4 @@
-export interface ProductFilters{
+export interface ProductFilters {
     page?: number;
     limit?: number;
     minPrice?: number;
@@ -77,12 +77,11 @@ export interface OrderFilters {
 export interface ShippingAddress {
     cep: string;
     street: string;
-    number: string;
+    number: number;
     complement?: string;
     neighborhood: string;
     city: string;
     state: string;
-    country: string;
 }
 
 export interface CreateOrderItem {
@@ -96,6 +95,7 @@ export interface CreateOrder {
     items: CreateOrderItem[];
     shippingAddress: ShippingAddress;
     paymentMethod: string;
+    shippingCost: number;
 }
 
 export interface UpdateOrder {

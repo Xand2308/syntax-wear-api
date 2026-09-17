@@ -12,11 +12,13 @@ interface OrderItems {
 interface createStripeCheckoutServiceRequest {
   products: OrderItems[];
   orderId: number;
+  shippingCost: number;
 }
 
 export const createStripeCheckoutService = async ({
   products,
   orderId,
+  shippingCost,
 }: createStripeCheckoutServiceRequest) => {
   if (!process.env.STRIPE_SECRET_KEY) {
     throw new Error("Missing Stripe secret key");
@@ -40,23 +42,37 @@ export const createStripeCheckoutService = async ({
         orderId: orderIdValue,
       },
     },
-    line_items: products.map((product) => ({
-      price_data: {
-        currency: "brl",
-        unit_amount: Math.round(product.unitPrice * 100), // Em Centavos
-        product_data: {
-          name: product.name,
+    line_items: [
+      ...products.map((product) => ({
+        price_data: {
+          currency: "brl" as const,
+          unit_amount: Math.round(product.unitPrice * 100),
+          product_data: { name: product.name },
         },
-      },
-
-      quantity: product.quantity,
-    })),
+        quantity: product.quantity,
+      })),
+      ...(shippingCost > 0
+        ? [{
+            price_data: {
+              currency: "brl" as const,
+              unit_amount: Math.round(shippingCost * 100),
+              product_data: { name: "Frete" },
+            },
+            quantity: 1,
+          }]
+        : []),
+    ],
     success_url: `${process.env.API_URL ?? "http://localhost:3000"}/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${frontendUrl}/cancel`,
   });
 
+  if (!session.url) {
+    throw new Error("Stripe não retornou a URL do checkout");
+  }
+
   return {
     sessionId: session.id,
+    checkoutUrl: session.url,
   };
 };
 

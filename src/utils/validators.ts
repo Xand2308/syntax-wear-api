@@ -87,8 +87,8 @@ export const orderFiltersSchema = z.object({
 });
 
 export const createOrderItemSchema = z.object({
-	productId: z.number().int().min(1, "ID do produto inválido"),
-	quantity: z.number().int().min(1, "Quantidade deve ser no mínimo 1"),
+	productId: z.coerce.number().int().min(1, "ID do produto inválido"),
+	quantity: z.coerce.number().int().min(1, "Quantidade deve ser no mínimo 1"),
 	size: z.string().optional(),
 });
 
@@ -96,24 +96,34 @@ export const createOrderSchema = z.object({
 	userId: z.number().int().optional(),
 	items: z.array(createOrderItemSchema).min(1, "Pedido deve ter pelo menos um item"),
 	shippingAddress: z.object({
-		cep: z.string().regex(/^\d{8}$/, "CEP deve ter 8 dígitos"),
+		cep: z.preprocess(
+			(value) => typeof value === "string" ? value.replace(/\D/g, "") : value,
+			z.string().regex(/^\d{8}$/, "CEP deve ter 8 dígitos"),
+		),
 		street: z.string().min(1, "Rua é obrigatória"),
-		number: z.string().min(1, "Número é obrigatório"),
+		number: z.coerce.number().min(1, "Número é obrigatório"),
 		complement: z.string().optional(),
 		neighborhood: z.string().min(1, "Bairro é obrigatório"),
 		city: z.string().min(1, "Cidade é obrigatória"),
 		state: z.string().length(2, "Estado deve ter 2 caracteres"),
-		country: z.string().default("BR"),
 	}),
 	paymentMethod: z.string().min(1, "Método de pagamento é obrigatório"),
+	shippingCost: z.coerce.number().nonnegative("Frete deve ser positivo").optional().default(0),
 });
+
+export const stripeCheckoutSchema = z.union([
+	z.object({
+		orderId: z.coerce.number().int().positive("ID do pedido inválido"),
+	}),
+	createOrderSchema,
+]);
 
 export const updateOrderSchema = z.object({
 	status: z.enum(["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"]).optional(),
 	shippingAddress: z.object({
 		cep: z.string().regex(/^\d{8}$/, "CEP deve ter 8 dígitos"),
 		street: z.string().min(1, "Rua é obrigatória"),
-		number: z.string().min(1, "Número é obrigatório"),
+		number: z.coerce.number().min(1, "Número é obrigatório"),
 		complement: z.string().optional(),
 		neighborhood: z.string().min(1, "Bairro é obrigatório"),
 		city: z.string().min(1, "Cidade é obrigatória"),

@@ -14,6 +14,7 @@ import jwt from "@fastify/jwt";
 import authRoutes from "./routes/auth.routes";
 import { errorHandler } from "./middlewares/error.middleware";
 import fastifyCookie from "@fastify/cookie";
+import stripeRoutes from "./routes/stripe.routes";
 
 const PORT = parseInt(process.env.PORT ?? "3000");
 
@@ -91,6 +92,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   fastify.register(categoryRoutes, { prefix: "/categories" });
   fastify.register(orderRoutes, { prefix: "/orders" });
   fastify.register(authRoutes, { prefix: "/auth" });
+  fastify.register(stripeRoutes, { prefix: "/stripe" });
 
   // Declare a route
   fastify.get("/", async (request, reply) => {

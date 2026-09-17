@@ -1,18 +1,35 @@
+import Decimal from "decimal.js";
 import { OrderFilters, CreateOrder, UpdateOrder } from "../types";
 import { prisma } from "../utils/prisma";
+import { OrderStatus } from "@prisma/client";
 
-export async function getOrders(filters: OrderFilters = {}) {
+class OrderError extends Error {
+  constructor(message: string, public statusCode: number) {
+    super(message);
+    this.name = "OrderError";
+  }
+}
+
+export async function getOrders(
+  filters: OrderFilters = {},
+  requestingUserId: number,
+  isAdmin = false,
+) {
   const page = filters.page || 1;
   const limit = filters.limit || 10;
   const skip = (page - 1) * limit;
 
   const where: any = {};
 
+  if (!isAdmin) {
+    where.userId = requestingUserId
+  }
+
   if (filters.status) {
     where.status = filters.status;
   }
 
-  if (filters.userId) {
+  if (filters.userId && isAdmin) {
     where.userId = filters.userId;
   }
 
@@ -99,7 +116,7 @@ export async function getOrderById(
   }
 
   // Verificar se o usuário pode acessar o pedido 
-  if(!isAdmin && order.userId !== requestingUserId) {
+  if (!isAdmin && order.userId !== requestingUserId) {
     throw new Error("Você não tem permissão para acessar este pedido!")
   }
 
@@ -109,104 +126,104 @@ export async function getOrderById(
 export async function createOrder(data: CreateOrder) {
   // 1. Buscar todos os produtos para validação
   const productIds = data.items.map((item) => item.productId);
+  const uniqueProductIds = [...new Set(productIds)];
   const products = await prisma.product.findMany({
-    where: { id: { in: productIds } },
+    where: { id: { in: uniqueProductIds } },
     include: { category: true },
   });
 
   // 2. Validar que todos os produtos existem
-  if (products.length !== productIds.length) {
+  if (products.length !== uniqueProductIds.length) {
     const foundIds = products.map((p) => p.id);
-    const missingIds = productIds.filter((id) => !foundIds.includes(id));
-    throw new Error(
+    const missingIds = uniqueProductIds.filter((id) => !foundIds.includes(id));
+    throw new OrderError(
       `Produto(s) com ID ${missingIds.join(", ")} não encontrado(s)`,
+      404,
     );
   }
 
-  // 3. Criar mapa de produtos para acesso rápido
-  const productMap = new Map(products.map((p) => [p.id, p]));
+  let total = new Decimal(0)
+  const orderItemData = data.items.map((item) => {
+    const product = products.find(product => product.id === item.productId)!
 
-  // 4. Validações e cálculo de total
-  let calculatedTotal = 0;
-
-  for (const item of data.items) {
-    const product = productMap.get(item.productId)!;
-
-    // Verificar se produto está ativo
-    if (!product.active) {
-      throw new Error(`Produto ${product.name} está inativo`);
+    if (product?.stock < item.quantity) {
+      throw new OrderError(
+        `Estoque insuficiente para o produto ${product.name}`,
+        409,
+      )
     }
 
-    // Verificar estoque disponível
-    if (product.stock < item.quantity) {
-      throw new Error(
-        `Estoque insuficiente para ${product.name}. Disponível: ${product.stock}, solicitado: ${item.quantity}`,
-      );
+    const itemTotal = new Decimal(product.price).mul(item.quantity)
+    total = total.add(itemTotal)
+
+    return {
+      productId: product.id,
+      quantity: item.quantity,
+      price: product.price,
+      size: item.size,
     }
+  })
 
-    // Verificar se produto tem sizes e se size foi informado
-    const productSizes = (product.sizes as any) || [];
-    if (productSizes.length > 0) {
-      if (!item.size) {
-        throw new Error(`Produto ${product.name} requer seleção de tamanho`);
-      }
-      if (!productSizes.includes(item.size)) {
-        throw new Error(
-          `Tamanho ${item.size} não disponível para ${product.name}`,
-        );
-      }
-    }
+  const shippingCost = new Decimal(data.shippingCost || 0)
+  total = total.add(shippingCost)
 
-    // Calcular total (usar preço atual do produto como snapshot)
-    calculatedTotal += Number(product.price) * item.quantity;
-  }
-
-  // 5. Criar pedido com transação atômica
+  // transação atômica
   const order = await prisma.$transaction(async (tx) => {
-    // 5.1 Criar Order
     const newOrder = await tx.order.create({
       data: {
         userId: data.userId,
-        total: calculatedTotal,
-        status: "PENDING",
-        shippingAddress: data.shippingAddress as any,
+        total,
+        status: OrderStatus.PENDING,
+        shippingAddress: JSON.parse(JSON.stringify(data.shippingAddress)),
+        shippingCost,
         paymentMethod: data.paymentMethod,
-      },
-    });
-
-    // 5.2 Criar OrderItems com snapshot de preço
-    await Promise.all(
-      data.items.map((item) => {
-        const product = productMap.get(item.productId)!;
-        return tx.orderItem.create({
-          data: {
-            orderId: newOrder.id,
+        items: {
+          create: orderItemData.map((item) => ({
             productId: item.productId,
-            price: product.price,
             quantity: item.quantity,
+            price: item.price,
             size: item.size,
-          },
-        });
-      }),
-    );
+          }))
+        }
+      },
 
-    // 5.3 Decrementar estoque de cada produto
-    await Promise.all(
-      data.items.map((item) =>
-        tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } },
-        }),
-      ),
-    );
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                images: true
+              }
+            }
+          }
+        }
+      }
+    })
 
-    return newOrder;
-  });
+    for (const item of orderItemData) {
+      await tx.product.update({
+        where: {
+          id: item.productId
+        },
+        data: {
+          stock: {
+            decrement: item.quantity
+          }
+        }
+      })
+    }
 
-  return order;
+    return newOrder
+
+  })
+
+  return order
 }
 
- export async function updateOrder(
+
+export async function updateOrder(
   id: number,
   data: UpdateOrder,
   requestingUserId: number,
@@ -221,8 +238,8 @@ export async function createOrder(data: CreateOrder) {
     throw new Error("Pedido não encontrado");
   }
   if (!isAdmin && existingOrder.userId !== requestingUserId) {
-  throw new Error("Você não tem permissão para atualizar este pedido!");
-}
+    throw new Error("Você não tem permissão para atualizar este pedido!");
+  }
 
   // Atualizar pedido
   const updatedOrder = await prisma.order.update({

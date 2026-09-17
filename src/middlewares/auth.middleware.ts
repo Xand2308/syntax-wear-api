@@ -34,3 +34,21 @@ export const authenticate = async (
       .send({ message: "Token inválido ou expirado" });
   }
 };
+
+export const authenticateIfPresent = async (
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<void> => {
+  const hasAuthorizationHeader = Boolean(request.headers.authorization);
+  const hasAuthCookie = Boolean(
+    (request as FastifyRequest & { cookies?: Record<string, string> }).cookies?.[
+      "Syntaxwear.token"
+    ],
+  );
+
+  if (!hasAuthorizationHeader && !hasAuthCookie) {
+    return;
+  }
+
+  await authenticate(request, reply);
+};
